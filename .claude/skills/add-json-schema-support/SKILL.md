@@ -16,7 +16,7 @@ resolves `$ref`s through swagger-client, so swagger-client owns `$ref` resolutio
 
 | Tool | Use |
 |------|-----|
-| `node .claude/skills/add-oas-support/scripts/spec-status.mjs --json-schema <dialect>` | ApiDOM prerequisites (`UPSTREAM`), every integration point (`MISSING`), the Swagger UI hand-off (`NOTE`). |
+| `node .claude/skills/add-oas-support/scripts/spec-status.mjs --json-schema <dialect>` | ApiDOM prerequisites (`UPSTREAM`), every integration point (`MISSING`), the Swagger UI hand-off (`NOTE`), dependencies installed from tarballs of an unreleased PR (`UNRELEASED`). |
 | `node .claude/skills/add-oas-support/scripts/verify-urls.mjs <paths>` or `--diff main` | URLs and anchors (meta-schema URIs, spec sections). |
 | `references/design-and-delivery.md` | Ownership, decisions (answered and open), PR plan. Read at Step 0. |
 | `references/dialects.md` | `$schema` identifiers, ApiDOM packages and names per dialect. Read at Step 1. |
@@ -28,12 +28,15 @@ resolves `$ref`s through swagger-client, so swagger-client owns `$ref` resolutio
 1. Dialect: the one the user names, else 2020-12. Dialects come in order (2020-12 first); a
    later one reuses the first's structure.
 2. `npm ci` if `node_modules` is missing, then `spec-status.mjs --json-schema <dialect>`.
-3. **`UPSTREAM`: stop.** swagger-client needs, from the installed ApiDOM: the dialect's namespace,
+3. **`UPSTREAM`.** swagger-client needs, from the installed ApiDOM: the dialect's namespace,
    apidom-reference's `json-schema-<dialect>` resolve and dereference strategies (with their
    `selectors/`), and the namespace's `keyMap`/`getNodeType` exports. Check the registry first
    (`npm view @swagger-api/apidom-reference version` and its release notes); if published, bump
-   ApiDOM and re-run. Otherwise report it as ApiDOM work (`/add-spec-version` phase 3 for
-   `--spec json-schema --version <dialect>`). As a subagent, stop with the report.
+   ApiDOM and re-run. If not, but the ApiDOM PR that adds them is ready (its exit gate passes,
+   its review is clean), install tarballs of its branch
+   (`../add-oas-support/references/unreleased-upstream.md`) and re-run; this PR then merges only
+   after the ApiDOM release. Otherwise stop and report it as ApiDOM work (`/add-spec-version`
+   phase 3 for `--spec json-schema --version <dialect>`). As a subagent, stop with the report.
 
 ## Step 1: Tracking Doc and Decisions
 
@@ -68,7 +71,8 @@ Include the regressions: an OpenAPI 3.1 document and a refused `$schema` still r
 ## Step 4: Gates
 
 - `npm run lint`, `npm run test:unit`, `npm run build`, `npm run test:artifact`.
-- `spec-status.mjs --json-schema <dialect>`: 0 `UPSTREAM`, 0 `MISSING`.
+- `spec-status.mjs --json-schema <dialect>`: 0 `UPSTREAM`, 0 `MISSING`; before merging also 0
+  `UNRELEASED` (`../add-oas-support/references/unreleased-upstream.md` section 4).
 - `verify-urls.mjs --diff main`: 0 `BROKEN`.
 - `/review-spec-support` in a fresh subagent given only "JSON Schema <dialect>" and the branch.
 
@@ -79,4 +83,6 @@ Branch `feat/json-schema-<dialect>`, title `feat(json-schema): resolve standalon
 Report the PR, the status summary before and after, the decisions, and for Swagger UI: the import
 path `swagger-client/es/resolver/strategies/json-schema-<dialect>-apidom` and the
 swagger-client release that ships it (Swagger UI adds it to both strategy lists of
-`src/core/plugins/swagger-client/index.js`, its `/add-json-schema-support` decision 5).
+`src/core/plugins/swagger-client/index.js`, its `/add-json-schema-support` decision 5). Before
+that release, once this PR is ready, Swagger UI can start on its branch as a tarball: report the
+branch and any ApiDOM tarballs it uses (the `UNRELEASED` lines).

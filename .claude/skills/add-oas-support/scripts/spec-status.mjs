@@ -62,9 +62,13 @@ Statuses:
   UPSTREAM  absent in an installed ApiDOM package: the swagger-client work can't start
   DECIDE    a file names the parent version but not the new one, or a test of the parent has no
             counterpart: wire or mirror it, or record in the tracking doc why not
+  UNRELEASED  a dependency installed from a tarball, path, git or URL (an unreleased upstream
+            PR, references/unreleased-upstream.md): fine on a branch, replace it with the
+            release before merging
   NOTE      information
 
-Exit codes: 0 no MISSING/UPSTREAM, 1 MISSING, 3 UPSTREAM (takes precedence), 2 usage error.
+Exit codes: 0 none of MISSING/UPSTREAM/UNRELEASED, 1 MISSING, 3 UPSTREAM (takes precedence),
+4 UNRELEASED only (ready, not mergeable), 2 usage error.
 `;
 
 const { values } = parseCli(USAGE, {
@@ -196,10 +200,17 @@ const checkDependency = (name) => {
   );
 };
 
+// A spec npm installs from a tarball, a local path, git or a URL rather than the registry: how a
+// branch uses an upstream PR before its release (references/unreleased-upstream.md).
+const UNRELEASED_SPEC = /^(file:|link:|git\+|git:|github:|https?:)|\.tgz$/;
+
 const checkApiDOMVersions = () => {
   const versions = new Set(
     Object.entries({ ...pkg.dependencies, ...pkg.optionalDependencies })
-      .filter(([name]) => name.startsWith('@swagger-api/apidom-'))
+      .filter(
+        ([name, version]) =>
+          name.startsWith('@swagger-api/apidom-') && !UNRELEASED_SPEC.test(version)
+      )
       .map(([, version]) => version)
   );
   check(
@@ -207,6 +218,23 @@ const checkApiDOMVersions = () => {
     'deps',
     `every @swagger-api/apidom-* package is on ${[...versions][0] ?? '(none)'}`,
     `@swagger-api/apidom-* packages are on ${versions.size} versions (${[...versions].join(', ')}): two copies of apidom-core end up in the bundle`
+  );
+};
+
+/** Every unreleased spec in the dependency fields and in `overrides`, nested ones included. */
+const checkUnreleased = () => {
+  const collect = (label, entries) =>
+    Object.entries(entries ?? {}).forEach(([name, spec]) => {
+      if (typeof spec !== 'string') collect(`${label} ${name} >`, spec);
+      else if (UNRELEASED_SPEC.test(spec))
+        report(
+          'UNRELEASED',
+          'deps',
+          `${label} ${name} is ${spec}: replace it with the release before merging`
+        );
+    });
+  ['dependencies', 'devDependencies', 'optionalDependencies', 'overrides'].forEach((field) =>
+    collect(field, pkg[field])
   );
 };
 
@@ -528,14 +556,16 @@ if (values.oas) {
   const id = values['json-schema'];
   checkJSONSchema(id, DIALECTS[id]);
 }
+checkUnreleased();
 
-const order = ['UPSTREAM', 'MISSING', 'DECIDE', 'NOTE', 'OK'];
+const order = ['UPSTREAM', 'MISSING', 'UNRELEASED', 'DECIDE', 'NOTE', 'OK'];
 results
   .sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status))
   .forEach(({ status, area, message }) =>
-    console.log(`${status.padEnd(8)} ${area.padEnd(9)} ${message}`)
+    console.log(`${status.padEnd(10)} ${area.padEnd(9)} ${message}`)
   );
 const count = (status) => results.filter((r) => r.status === status).length;
 console.log(`\n${order.map((status) => `${count(status)} ${status}`).join(', ')}`);
 if (count('UPSTREAM') > 0) process.exit(3);
 if (count('MISSING') > 0) process.exit(1);
+if (count('UNRELEASED') > 0) process.exit(4);

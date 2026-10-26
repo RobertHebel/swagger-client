@@ -36,7 +36,8 @@ are replaced by `/add-oas-support`, `/add-json-schema-support` and `/review-spec
 
 ### `/add-oas-support`
 
-Adds an OpenAPI version line (3.3, 4.0, ...). Step 0 stops while ApiDOM lacks the version. Then:
+Adds an OpenAPI version line (3.3, 4.0, ...). Step 0 stops while ApiDOM lacks the version, unless
+a ready ApiDOM PR is installed as tarballs (`references/unreleased-upstream.md`). Then:
 research and an uncommitted `ADD-OAS-{VERSION}.md`, dependencies, PR 1 with basic support (parity
 with the parent version: predicate, strategy, parsers, dereference strategy, registration,
 subtree resolver, build, docs, mirrored tests), then one PR per feature. The OAS 3.2 work is the

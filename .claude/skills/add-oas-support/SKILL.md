@@ -28,7 +28,7 @@ Run from the repository root.
 
 | Tool | Use |
 |------|-----|
-| `node .claude/skills/add-oas-support/scripts/spec-status.mjs --oas X.Y [--parent X.Y]` | ApiDOM prerequisites (`UPSTREAM`, exit 3), every integration point (`MISSING`, exit 1), tests without a counterpart of the parent's and files that name the parent version but not the new one (`DECIDE`). |
+| `node .claude/skills/add-oas-support/scripts/spec-status.mjs --oas X.Y [--parent X.Y]` | ApiDOM prerequisites (`UPSTREAM`, exit 3), every integration point (`MISSING`, exit 1), tests without a counterpart of the parent's and files that name the parent version but not the new one (`DECIDE`), dependencies installed from tarballs of an unreleased PR (`UNRELEASED`, exit 4 when nothing else is open). |
 | `node .claude/skills/add-oas-support/scripts/verify-urls.mjs <paths>` or `--diff main` | HTTP status and `#anchor` of every URL in the given files or the branch diff. |
 | `bash .claude/skills/add-oas-support/scripts/test/smoke.sh` | Smoke test of the scripts, including a replay of `a964cd06`; run after changing a script. |
 | `references/integration-points.md` | Every place a version is wired, with the 3.2 file to copy. Read at Step 3. |
@@ -36,6 +36,7 @@ Run from the repository root.
 | `references/tracking-doc-template.md` | The uncommitted `ADD-OAS-{VERSION}.md`. Read at Step 1. |
 | `references/testing.md` | Jest layout, fixtures, the parent's tests to mirror. Read at Step 5. |
 | `references/review-lessons.md` | Defects from earlier version work in this repository. Read before Step 3. |
+| `references/unreleased-upstream.md` | Starting on a ready but unreleased ApiDOM PR: pack its branch, wire the tarballs, replace them with the release before merging. Read at Step 0 when ApiDOM isn't released yet. |
 
 ## Step 0: Upstream Gate (every invocation)
 
@@ -46,9 +47,12 @@ Run from the repository root.
 3. **`UPSTREAM`: is it published?** The script reads `node_modules`; check the registry
    (`npm view @swagger-api/apidom-ns-openapi-X-Y version`). If it is published, bump ApiDOM
    (Step 2) first and re-run.
-4. **Still `UPSTREAM`: stop.** Report it as ApiDOM work (`swagger-api/apidom`, `/add-spec-version`
+4. **Not published, but the ApiDOM PR is ready** (its exit gate passes, its review is clean):
+   install tarballs of its branch (`references/unreleased-upstream.md`) and re-run. This PR then
+   merges only after the ApiDOM release.
+5. **Still `UPSTREAM`: stop.** Report it as ApiDOM work (`swagger-api/apidom`, `/add-spec-version`
    phases 1 and 3). As a subagent, stop with the report; don't guess versions.
-5. A major version (4.0) doesn't share the 3.x document shape: the predicate, execute and the
+6. A major version (4.0) doesn't share the 3.x document shape: the predicate, execute and the
    strategy can't be copied. Ask the user how to proceed; as a subagent, stop and report.
 
 ## Step 1: Research and Tracking Doc
@@ -107,7 +111,8 @@ tests for its rows, including one that the parent version behaves as before.
 ## Step 6: Gates (every PR)
 
 - `npm run lint`, `npm run test:unit`, `npm run build`, `npm run test:artifact`.
-- `spec-status.mjs --oas X.Y`: 0 `UPSTREAM`, 0 `MISSING`, every `DECIDE` wired or recorded.
+- `spec-status.mjs --oas X.Y`: 0 `UPSTREAM`, 0 `MISSING`, every `DECIDE` wired or recorded;
+  before merging also 0 `UNRELEASED` (`references/unreleased-upstream.md` section 4).
 - `verify-urls.mjs --diff main`: 0 `BROKEN`.
 - `/review-spec-support` in a fresh subagent given only "OpenAPI X.Y" and the branch. Fix every
   finding.
